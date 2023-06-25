@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-
+from tkinter import simpledialog
 import PIL.Image
 import ttkbootstrap as ttk
 # importing the library
@@ -71,21 +71,58 @@ def adding_watermark_to_img():
     elif len(entry_box.get())==0:
         messagebox.showerror(title="Can't Process", message='Please type data to add watermark')
     else:
-        image = Image.open(fp=FILE_PATH)
+        name = entry_box.get()
 
-        watermark_image = image.copy()
-        draw = ImageDraw.Draw(watermark_image)
-        w, h = image.size
-        x,y = int(w/2), int(h/2)
-        if x>y:
-            font_size = y
-        if y>x:
-            font_size=x
-        else:
-            font_size=x
-        font = ImageFont.truetype('arial.ttf', int(font_size/6))
-        draw.text((x,y), entry_box.get(), fill=(0,0,0), font=font, anchor='ms')
-        plt.imshow(watermark_image)
+        # --- original image ---
+
+        # original_image_size = (794, 1096)
+        # original_image = Image.new('RGBA', image_size, 'white')
+
+        original_image = Image.open(FILE_PATH).convert("RGBA")
+        original_image_size = original_image.size
+
+        # --- text image ---
+
+        font = ImageFont.truetype('arial.ttf', 55)
+
+        # calculate text size in pixels (width, height)
+        text_size = font.getsize(name)
+
+        # create image for text
+        text_image = Image.new('RGBA', text_size, (255, 255, 255, 0))
+
+        text_draw = ImageDraw.Draw(text_image)
+
+        # draw text on image
+        text_draw.text((0, 0), name, (255, 255, 255, 129), font=font)
+
+        # rotate text image and fill with transparent color
+        rotated_text_image = text_image.rotate(angle_scale.get().__floor__(), expand=True, fillcolor=(0, 0, 0, 0))
+
+        rotated_text_image_size = rotated_text_image.size
+
+        # rotated_text_image.show()
+
+        # --- watermarks image ---
+
+        # image with the same size and transparent color (..., ..., ..., 0)
+        watermarks_image = Image.new('RGBA', original_image_size, (255, 255, 255, 142))
+
+        # calculate top/left corner for centered text
+        x = original_image_size[0] // 2 - rotated_text_image_size[0] // 2
+        y = original_image_size[1] // 2 - rotated_text_image_size[1] // 2
+
+        # put text on watermarks image
+        watermarks_image.paste(rotated_text_image, (x, y))
+
+        # --- put watermarks image on original image ---
+
+        combined_image = Image.alpha_composite(original_image, watermarks_image)
+
+        # --- result ---
+
+        img_name = simpledialog.askstring(title='filepat', prompt='ENter name of file you want to save')
+        combined_image.save(f'{img_name}.png')
 
 
 def clear_all():
